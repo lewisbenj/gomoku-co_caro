@@ -321,4 +321,4 @@ modalResetButton.addEventListener('click', initializeBoard);
 
 initializeBoard();
 
-//uocgicoaylacuatoi
+//uocgicoaylacuatoi =)))
