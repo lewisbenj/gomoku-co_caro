@@ -64,16 +64,8 @@ The `botMove` function iterates through potential moves, temporarily places its 
 
 ---
 
-## 🤝 Contribution
+## 🤝 OVERVIEW
 
-Contributions to further enhance the AI algorithm, improve the UI/UX, or optimize performance are always welcome!
-
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/ImprovedAI`).
-3.  Commit your changes (`git commit -m 'feat: added smarter threat detection'`).
-4.  Push to the branch (`git push origin feature/ImprovedAI`).
-5.  Open a Pull Request.
-
----
+[https://gomoku-co-caro.vercel.app/]
 
 **© 2025 [Benjamin Lewis]**
