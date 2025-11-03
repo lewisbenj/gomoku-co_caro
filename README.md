@@ -29,7 +29,7 @@ You can run this game instantly as it requires **no external libraries or packag
 
 1.  **Clone the Repository** or download the ZIP file:
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git)
+    git clone [[https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git](https://github.com/lewisbenj/gomoku-co_caro.git))
     ```
 2.  **Launch the Game:** Navigate to the project folder and simply open the `index.html` file with any modern web browser (Chrome, Firefox, Edge, etc.).
 
