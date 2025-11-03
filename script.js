@@ -161,7 +161,7 @@ function getPossibleMoves() {
         }
     }
 
-    // Nếu bàn cờ trống, ưu tiên giữa
+    
     if (occupiedCells.length === 0) {
         const center = Math.floor(BOARD_SIZE / 2);
         if (board[center][center] === null) {
@@ -172,7 +172,7 @@ function getPossibleMoves() {
 
     const checked = new Set();
     
-    // Chỉ xem xét các ô trống trong phạm vi 2 ô xung quanh các ô đã đặt cờ
+     
     for (const {r, c} of occupiedCells) {
         for (let i = Math.max(0, r - 2); i <= Math.min(BOARD_SIZE - 1, r + 2); i++) {
             for (let j = Math.max(0, c - 2); j <= Math.min(BOARD_SIZE - 1, c + 2); j++) {
@@ -185,8 +185,7 @@ function getPossibleMoves() {
         }
     }
 
-    // Giới hạn số lượng nước đi đánh giá để tránh treo trình duyệt
-    // Sắp xếp ngẫu nhiên và chỉ giữ lại một số lượng nhỏ nước đi nếu quá nhiều
+    
     if (moves.length > 80) {
         moves.sort(() => 0.5 - Math.random());
         return moves.slice(0, 80);
