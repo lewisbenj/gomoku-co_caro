@@ -32,7 +32,7 @@ function initializeBoard() {
     isGameOver = false;
     isPlayerTurn = true;
     botThinking = false;
-    resultModal.style.display = 'none'; // Ẩn modal
+    resultModal.style.display = 'none';
 
     statusElement.textContent = `Lượt của bạn (${PLAYER_SYMBOL})`;
     statusElement.style.color = '#4CAF50'; 
@@ -64,7 +64,7 @@ function handleCellClick(event) {
         if (!isGameOver) {
             isPlayerTurn = false;
             statusElement.textContent = `Máy đang suy nghĩ...`;
-            setTimeout(botMove, 500); 
+            setTimeout(botMove, 50); // Giảm thời gian chờ
         }
     }
 }
@@ -97,10 +97,10 @@ function showResult(message) {
 
 function checkWin(r, c, player) {
     const directions = [
-        [0, 1],   // Ngang
-        [1, 0],   // Dọc
-        [1, 1],   // Chéo chính
-        [1, -1]   // Chéo phụ
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [1, -1]
     ];
 
     for (const [dr, dc] of directions) {
@@ -148,6 +148,54 @@ function hasNeighbor(r, c, dist) {
     return false;
 }
 
+function getPossibleMoves() {
+    const moves = [];
+    const occupiedCells = [];
+    
+    // Tìm tất cả các ô đã đặt cờ
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            if (board[i][j] !== null) {
+                occupiedCells.push({r: i, c: j});
+            }
+        }
+    }
+
+    // Nếu bàn cờ trống, ưu tiên giữa
+    if (occupiedCells.length === 0) {
+        const center = Math.floor(BOARD_SIZE / 2);
+        if (board[center][center] === null) {
+            moves.push({ r: center, c: center });
+        }
+        return moves;
+    }
+
+    const checked = new Set();
+    
+    // Chỉ xem xét các ô trống trong phạm vi 2 ô xung quanh các ô đã đặt cờ
+    for (const {r, c} of occupiedCells) {
+        for (let i = Math.max(0, r - 2); i <= Math.min(BOARD_SIZE - 1, r + 2); i++) {
+            for (let j = Math.max(0, c - 2); j <= Math.min(BOARD_SIZE - 1, c + 2); j++) {
+                const key = `${i},${j}`;
+                if (board[i][j] === null && !checked.has(key)) {
+                    moves.push({ r: i, c: j });
+                    checked.add(key);
+                }
+            }
+        }
+    }
+
+    // Giới hạn số lượng nước đi đánh giá để tránh treo trình duyệt
+    // Sắp xếp ngẫu nhiên và chỉ giữ lại một số lượng nhỏ nước đi nếu quá nhiều
+    if (moves.length > 80) {
+        moves.sort(() => 0.5 - Math.random());
+        return moves.slice(0, 80);
+    }
+    
+    return moves;
+}
+
+
 function botMove() {
     if (isGameOver) return;
     botThinking = true;
@@ -155,27 +203,14 @@ function botMove() {
     let bestMove = null;
     let maxScore = -Infinity;
     
-    const moves = [];
-    for (let i = 0; i < BOARD_SIZE; i++) {
-        for (let j = 0; j < BOARD_SIZE; j++) {
-            if (board[i][j] === null && hasNeighbor(i, j, 2)) {
-                moves.push({ r: i, c: j });
-            }
-        }
-    }
-    
-    if (moves.length === 0) {
-        const center = Math.floor(BOARD_SIZE / 2);
-        if (board[center][center] === null) {
-            moves.push({ r: center, c: center });
-        }
-    }
+    const moves = getPossibleMoves();
     
     for (const move of moves) {
         const r = move.r;
         const c = move.c;
         let score = 0;
 
+        // 1. Kiểm tra Thắng
         board[r][c] = BOT_SYMBOL;
         if (checkWin(r, c, BOT_SYMBOL)) {
             board[r][c] = null;
@@ -184,18 +219,20 @@ function botMove() {
         }
         board[r][c] = null;
         
-
+        // 2. Kiểm tra Chặn
         board[r][c] = PLAYER_SYMBOL;
         if (checkWin(r, c, PLAYER_SYMBOL)) {
-            score += SCORES.BLOCK_WIN; n
+            score += SCORES.BLOCK_WIN;
         }
         board[r][c] = null;
         
         
+        // 3. Đánh giá Tấn công
         board[r][c] = BOT_SYMBOL;
         score += evaluatePosition(r, c, BOT_SYMBOL);
         board[r][c] = null; 
         
+        // 4. Đánh giá Phòng thủ/Mối đe dọa từ Player
         board[r][c] = PLAYER_SYMBOL;
         score += evaluatePosition(r, c, PLAYER_SYMBOL) * 0.5; 
         board[r][c] = null; 
@@ -208,7 +245,12 @@ function botMove() {
 
     if (bestMove) {
         placePiece(bestMove.r, bestMove.c, BOT_SYMBOL);
-    } 
+    } else {
+        // Trường hợp khẩn cấp nếu không tìm thấy nước đi nào, chọn nước đầu tiên
+        if (moves.length > 0) {
+            placePiece(moves[0].r, moves[0].c, BOT_SYMBOL);
+        }
+    }
     
     isPlayerTurn = true;
     statusElement.textContent = `Lượt của bạn (${PLAYER_SYMBOL})`;
@@ -253,7 +295,7 @@ function evaluatePosition(r, c, symbol) {
             }
         }
 
-        if (count >= WIN_COUNT - 1) { // 4 ô
+        if (count >= WIN_COUNT - 1) { 
             score += SCORES.FOUR;
         } else if (count === 3) {
             if (openEnds === 2) {
@@ -279,4 +321,4 @@ modalResetButton.addEventListener('click', initializeBoard);
 
 initializeBoard();
 
-// uocgicoaylacuatoi =))
+//uocgicoaylacuatoi
