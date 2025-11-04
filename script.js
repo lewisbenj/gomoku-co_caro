@@ -7,7 +7,9 @@ let board = [];
 let isGameOver = false;
 let isPlayerTurn = true;
 let botThinking = false;
+let nextPlayerStarts = PLAYER_SYMBOL; 
 
+const containerElement = document.querySelector('.container');
 const gameBoardElement = document.getElementById('game-board');
 const statusElement = document.getElementById('status');
 
@@ -27,16 +29,21 @@ const SCORES = {
 };
 
 function initializeBoard() {
+    const existingLines = document.querySelectorAll('#winning-line');
+    existingLines.forEach(line => line.remove());
+    
     board = [];
-    gameBoardElement.innerHTML = '';
+    gameBoardElement.innerHTML = ''; 
     isGameOver = false;
-    isPlayerTurn = true;
     botThinking = false;
     resultModal.style.display = 'none';
 
-    statusElement.textContent = `Lượt của bạn (${PLAYER_SYMBOL})`;
-    statusElement.style.color = '#4CAF50'; 
+    isPlayerTurn = (nextPlayerStarts === PLAYER_SYMBOL);
 
+    const currentPlayer = isPlayerTurn ? PLAYER_SYMBOL : BOT_SYMBOL;
+    statusElement.textContent = `Lượt của ${isPlayerTurn ? 'bạn' : 'máy'} (${currentPlayer})`;
+    statusElement.style.color = '#4CAF50'; 
+    
     for (let i = 0; i < BOARD_SIZE; i++) {
         board[i] = [];
         for (let j = 0; j < BOARD_SIZE; j++) {
@@ -49,6 +56,11 @@ function initializeBoard() {
             cell.addEventListener('click', handleCellClick);
             gameBoardElement.appendChild(cell);
         }
+    }
+
+    if (!isPlayerTurn) {
+        statusElement.textContent = `Máy đang suy nghĩ...`;
+        setTimeout(botMove, 50);
     }
 }
 
@@ -64,7 +76,7 @@ function handleCellClick(event) {
         if (!isGameOver) {
             isPlayerTurn = false;
             statusElement.textContent = `Máy đang suy nghĩ...`;
-            setTimeout(botMove, 50); // Giảm thời gian chờ
+            setTimeout(botMove, 50);
         }
     }
 }
@@ -76,14 +88,29 @@ function placePiece(row, col, symbol) {
     cellElement.classList.add(symbol.toLowerCase());
     cellElement.textContent = symbol; 
 
-    if (checkWin(row, col, symbol)) {
+    const winningCells = checkWin(row, col, symbol);
+    if (winningCells) {
         isGameOver = true;
-        showResult(symbol === PLAYER_SYMBOL ? "🎉 BẠN THẮNG TUYỆT VỜI! 🎉" : "Máy thắng. Chúc may mắn lần sau!");
+        
+        drawWinningLine(winningCells, symbol); 
+        
+        nextPlayerStarts = (symbol === PLAYER_SYMBOL) ? BOT_SYMBOL : PLAYER_SYMBOL;
+        
+        const resultMessage = symbol === PLAYER_SYMBOL ? "🎉 BẠN THẮNG TUYỆT VỜI! 🎉" : "Máy thắng. Chúc may mắn lần sau!";
+        
+        setTimeout(() => {
+            const existingLines = document.querySelectorAll('#winning-line');
+            existingLines.forEach(line => line.remove());
+            
+            showResult(resultMessage);
+        }, 1500); 
+        
         return true;
     }
     
     if (checkDraw()) {
         isGameOver = true;
+        nextPlayerStarts = (nextPlayerStarts === PLAYER_SYMBOL) ? BOT_SYMBOL : PLAYER_SYMBOL;
         showResult("🤝 HÒA CỜ! 🤝");
     }
 
@@ -95,6 +122,48 @@ function showResult(message) {
     resultModal.style.display = 'block';
 }
 
+function drawWinningLine(cells, winnerSymbol) {
+    if (cells.length < WIN_COUNT) return; 
+    
+    const startCell = gameBoardElement.querySelector(`[data-row="${cells[0].r}"][data-col="${cells[0].c}"]`);
+    const endCell = gameBoardElement.querySelector(`[data-row="${cells[4].r}"][data-col="${cells[4].c}"]`);
+    
+    if (!startCell || !endCell || !containerElement) return;
+
+    const cellSize = startCell.getBoundingClientRect().width;
+    const containerRect = containerElement.getBoundingClientRect();
+    
+    const startX_abs = startCell.getBoundingClientRect().left + cellSize / 2;
+    const startY_abs = startCell.getBoundingClientRect().top + cellSize / 2;
+    const endX_abs = endCell.getBoundingClientRect().left + cellSize / 2;
+    const endY_abs = endCell.getBoundingClientRect().top + cellSize / 2;
+    
+    const startX_rel = startX_abs - containerRect.left;
+    const startY_rel = startY_abs - containerRect.top;
+    
+    const angle = Math.atan2(endY_abs - startY_abs, endX_abs - startX_abs) * (180 / Math.PI);
+    const length = Math.sqrt(Math.pow(endX_abs - startX_abs, 2) + Math.pow(endY_abs - startY_abs, 2));
+
+    const line = document.createElement('div');
+    line.id = 'winning-line';
+    line.style.width = `${length}px`;
+    line.style.height = '6px';
+    line.style.backgroundColor = (winnerSymbol === PLAYER_SYMBOL) ? '#3f51b5' : '#c0392b';
+    line.style.position = 'absolute';
+    line.style.left = `${startX_rel}px`;
+    line.style.top = `${startY_rel}px`;
+    line.style.transformOrigin = 'left center';
+    
+    const adjustmentFactor = 1.05; 
+    line.style.transform = `translate(${- (length * (adjustmentFactor - 1) / 2)}px, -3px) rotate(${angle}deg) scaleX(${adjustmentFactor})`;
+    
+    line.style.borderRadius = '3px';
+    line.style.zIndex = '10';
+    
+    containerElement.appendChild(line); 
+}
+
+
 function checkWin(r, c, player) {
     const directions = [
         [0, 1],
@@ -105,12 +174,14 @@ function checkWin(r, c, player) {
 
     for (const [dr, dc] of directions) {
         let count = 1;
+        let winningCells = [{r, c}];
         
         for (let i = 1; i < WIN_COUNT; i++) {
             const nr = r + i * dr;
             const nc = c + i * dc;
             if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === player) {
                 count++;
+                winningCells.push({r: nr, c: nc});
             } else {
                 break;
             }
@@ -121,16 +192,17 @@ function checkWin(r, c, player) {
             const nc = c - i * dc;
             if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === player) {
                 count++;
+                winningCells.unshift({r: nr, c: nc});
             } else {
                 break;
             }
         }
 
         if (count >= WIN_COUNT) {
-            return true;
+            return winningCells.slice(0, WIN_COUNT); 
         }
     }
-    return false;
+    return null; 
 }
 
 function checkDraw() {
@@ -152,7 +224,6 @@ function getPossibleMoves() {
     const moves = [];
     const occupiedCells = [];
     
-    // Tìm tất cả các ô đã đặt cờ
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
             if (board[i][j] !== null) {
@@ -161,7 +232,6 @@ function getPossibleMoves() {
         }
     }
 
-    
     if (occupiedCells.length === 0) {
         const center = Math.floor(BOARD_SIZE / 2);
         if (board[center][center] === null) {
@@ -172,7 +242,6 @@ function getPossibleMoves() {
 
     const checked = new Set();
     
-     
     for (const {r, c} of occupiedCells) {
         for (let i = Math.max(0, r - 2); i <= Math.min(BOARD_SIZE - 1, r + 2); i++) {
             for (let j = Math.max(0, c - 2); j <= Math.min(BOARD_SIZE - 1, c + 2); j++) {
@@ -185,7 +254,6 @@ function getPossibleMoves() {
         }
     }
 
-    
     if (moves.length > 80) {
         moves.sort(() => 0.5 - Math.random());
         return moves.slice(0, 80);
@@ -209,7 +277,6 @@ function botMove() {
         const c = move.c;
         let score = 0;
 
-        // 1. Kiểm tra Thắng
         board[r][c] = BOT_SYMBOL;
         if (checkWin(r, c, BOT_SYMBOL)) {
             board[r][c] = null;
@@ -218,7 +285,6 @@ function botMove() {
         }
         board[r][c] = null;
         
-        // 2. Kiểm tra Chặn
         board[r][c] = PLAYER_SYMBOL;
         if (checkWin(r, c, PLAYER_SYMBOL)) {
             score += SCORES.BLOCK_WIN;
@@ -226,12 +292,10 @@ function botMove() {
         board[r][c] = null;
         
         
-        // 3. Đánh giá Tấn công
         board[r][c] = BOT_SYMBOL;
         score += evaluatePosition(r, c, BOT_SYMBOL);
         board[r][c] = null; 
         
-        // 4. Đánh giá Phòng thủ/Mối đe dọa từ Player
         board[r][c] = PLAYER_SYMBOL;
         score += evaluatePosition(r, c, PLAYER_SYMBOL) * 0.5; 
         board[r][c] = null; 
@@ -245,7 +309,6 @@ function botMove() {
     if (bestMove) {
         placePiece(bestMove.r, bestMove.c, BOT_SYMBOL);
     } else {
-        // Trường hợp khẩn cấp nếu không tìm thấy nước đi nào, chọn nước đầu tiên
         if (moves.length > 0) {
             placePiece(moves[0].r, moves[0].c, BOT_SYMBOL);
         }
@@ -318,6 +381,7 @@ function evaluatePosition(r, c, symbol) {
 
 modalResetButton.addEventListener('click', initializeBoard);
 
+nextPlayerStarts = PLAYER_SYMBOL; 
 initializeBoard();
 
 //uocgicoaylacuatoi =)))
